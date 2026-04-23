@@ -1622,7 +1622,9 @@ Object.assign(frappe.utils, {
 			route +=
 				"?" +
 				$.map(item.route_options, function (value, key) {
-					return encodeURIComponent(key) + "=" + encodeURIComponent(value);
+					return encodeURIComponent(key) + "=" + encodeURIComponent(
+						Array.isArray(value) ? JSON.stringify(value) : value
+					);
 				}).join("&");
 		}
 

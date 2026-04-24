@@ -337,10 +337,11 @@ class Page:
 		return self.get_pdf_from_stream(result["stream"], raw)
 
 	def get_pdf_stream_id(self):
-		# wait for task to complete
+		# wait for the outer Task (WebSocket send) to complete
 		self.session.wait_for_event(self.wait_for_pdf)
-		# wait for event to complete
 		task = self.wait_for_pdf.result()
+		# wait for Chrome's Page.printToPDF response (the inner future)
+		self.session.wait_for_event(task, timeout=30)
 		future = task.result()
 		stream_id = future["result"]["stream"]
 		return stream_id

@@ -2641,6 +2641,9 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 				}
 			} else if (typeof value === "string" && value.startsWith("[") && value.endsWith("]")) {
 				value = JSON.parse(value);
+			} else if (typeof value === "string" && value.includes(",")) {
+				const comma_idx = value.indexOf(",");
+				value = [value.substring(0, comma_idx), value.substring(comma_idx + 1)];
 			}
 
 			// if `Child DocType.fieldname`

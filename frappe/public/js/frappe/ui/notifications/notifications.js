@@ -218,7 +218,12 @@ class BaseNotificationsView {
 
 class NotificationsView extends BaseNotificationsView {
 	make() {
-		this.notifications_icon = this.parent.find(".notifications-icon");
+		this.notifications_icon = this.parent.find(".desktop-notification-icon");
+		if (!this.notifications_icon.length) {
+			this.notifications_icon = this.parent
+				.closest(".body-sidebar")
+				.find(".sidebar-notification .sidebar-item-icon");
+		}
 		this.notifications_icon
 			.attr("title", __("Notifications"))
 			.tooltip({ delay: { show: 600, hide: 100 }, trigger: "hover" });
@@ -383,11 +388,11 @@ class NotificationsView extends BaseNotificationsView {
 	}
 
 	toggle_notification_icon(seen) {
-		this.notifications_icon.find(".notifications-seen").toggle(seen);
-		this.notifications_icon.find(".notifications-unseen").toggle(!seen);
+		this.notifications_icon.toggleClass("indicator blue", !seen);
 	}
 
 	toggle_seen(flag) {
+		frappe.boot.notification_settings.seen = cint(flag);
 		frappe.call(
 			"frappe.desk.doctype.notification_settings.notification_settings.set_seen_value",
 			{
@@ -399,23 +404,45 @@ class NotificationsView extends BaseNotificationsView {
 
 	setup_notification_listeners() {
 		frappe.realtime.on("notification", () => {
+			frappe.boot.notification_settings.seen = 0;
 			this.toggle_notification_icon(false);
 			this.update_dropdown();
 		});
 
+		// Cross-tab sync via socket.io.
 		frappe.realtime.on("indicator_hide", () => {
+			frappe.boot.notification_settings.seen = 1;
+			this.toggle_notification_icon(true);
+		});
+
+		// Same-page sync without requiring socket.io.
+		$(document).on("notification_indicator_hide", () => {
 			this.toggle_notification_icon(true);
 		});
 
 		this.parent.on("show.bs.dropdown", () => {
 			this.toggle_seen(true);
-			if (this.notifications_icon.find(".notifications-unseen").is(":visible")) {
+			if (this.notifications_icon.hasClass("indicator")) {
 				this.toggle_notification_icon(true);
+				$(document).trigger("notification_indicator_hide");
 				frappe.call(
 					"frappe.desk.doctype.notification_log.notification_log.trigger_indicator_hide"
 				);
 			}
 		});
+
+		if (!this.parent.find("[data-toggle='dropdown']").length) {
+			$(".standard-items-sections .sidebar-notification").on("click.notification_seen", () => {
+				this.toggle_seen(true);
+				if (this.notifications_icon.hasClass("indicator")) {
+					this.toggle_notification_icon(true);
+					$(document).trigger("notification_indicator_hide");
+					frappe.call(
+						"frappe.desk.doctype.notification_log.notification_log.trigger_indicator_hide"
+					);
+				}
+			});
+		}
 	}
 }
 
